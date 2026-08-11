@@ -1,3 +1,4 @@
 [submodule "aw-webui"]
 	path = aw-webui
-	url = https://github.com/ActivityWatch/aw-webui.git
+	url = https://github.com/stoep-labs/aw-webui.git
+	branch = master
