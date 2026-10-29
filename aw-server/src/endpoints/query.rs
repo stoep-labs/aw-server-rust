@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::Instant;
 
 use rocket::http::Status;
 use rocket::response::content::RawJson;
@@ -68,6 +69,19 @@ pub fn query(
     let use_cache = state.query_cache_enabled && cache.unwrap_or(true);
     let datastore = &state.datastore;
 
+    // Debug: log incoming query (truncated) and timeperiods
+    let query_preview: String = query_code.chars().take(500).collect();
+    debug!(
+        "Query received — {} timeperiod(s), query preview: {}{}",
+        intervals.len(),
+        query_preview,
+        if query_code.chars().count() > 500 { "…" } else { "" }
+    );
+    for (i, interval) in intervals.iter().enumerate() {
+        debug!("  timeperiod[{}]: {}", i, interval);
+    }
+    let start_time = Instant::now();
+
     let evaluate = |interval: &aw_models::TimeInterval| -> Result<Arc<str>, HttpErrorJson> {
         match aw_query::query(&query_code, interval, datastore) {
             Ok(data) => match serde_json::to_string(&data) {
@@ -108,6 +122,12 @@ pub fn query(
         }
         bodies.push(evaluate(interval)?);
     }
+
+    debug!(
+        "Query completed — {} result(s) in {:.1}ms",
+        bodies.len(),
+        start_time.elapsed().as_secs_f64() * 1000.0
+    );
 
     // Join the already-serialized results into the JSON array response body.
     // The parts come either from the cache or from a single serialization, so
